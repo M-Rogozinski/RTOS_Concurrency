@@ -1,7 +1,6 @@
-freertos.c:87:6:vApplicationGetIdleTaskMemory	1
-freertos.c:101:6:MX_FREERTOS_Init	1
-freertos.c:165:6:StartDefaultTask	1
-freertos.c:183:6:StartTask02	1
-freertos.c:216:6:StartTask03	1
-freertos.c:248:6:StartTask04	1
-freertos.c:280:6:StartPrintTask	1
+freertos.c:131:6:MX_FREERTOS_Init	1
+freertos.c:192:6:StartDefaultTask	1
+freertos.c:210:6:StartTask02	3
+freertos.c:260:6:StartTask03	3
+freertos.c:310:6:StartTask04	3
+freertos.c:360:6:StartPrintTask	4
