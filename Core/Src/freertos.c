@@ -27,7 +27,9 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
 #include "usart.h"
-//#include <math.h>
+#include <math.h>
+#include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,24 +73,24 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for myTask01 */
+osThreadId_t myTask01Handle;
+const osThreadAttr_t myTask01_attributes = {
+  .name = "myTask01",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
 /* Definitions for myTask02 */
 osThreadId_t myTask02Handle;
 const osThreadAttr_t myTask02_attributes = {
   .name = "myTask02",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for myTask03 */
 osThreadId_t myTask03Handle;
 const osThreadAttr_t myTask03_attributes = {
   .name = "myTask03",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for myTask04 */
-osThreadId_t myTask04Handle;
-const osThreadAttr_t myTask04_attributes = {
-  .name = "myTask04",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
@@ -116,9 +118,9 @@ const osSemaphoreAttr_t myBinarySem01_attributes = {
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void StartTask01(void *argument);
 void StartTask02(void *argument);
 void StartTask03(void *argument);
-void StartTask04(void *argument);
 void StartPrintTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -160,14 +162,14 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
+  /* creation of myTask01 */
+  myTask01Handle = osThreadNew(StartTask01, NULL, &myTask01_attributes);
+
   /* creation of myTask02 */
   myTask02Handle = osThreadNew(StartTask02, NULL, &myTask02_attributes);
 
   /* creation of myTask03 */
   myTask03Handle = osThreadNew(StartTask03, NULL, &myTask03_attributes);
-
-  /* creation of myTask04 */
-  myTask04Handle = osThreadNew(StartTask04, NULL, &myTask04_attributes);
 
   /* creation of myPrintTask */
   myPrintTaskHandle = osThreadNew(StartPrintTask, NULL, &myPrintTask_attributes);
@@ -200,24 +202,25 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-/* USER CODE BEGIN Header_StartTask02 */
+/* USER CODE BEGIN Header_StartTask01 */
 /**
-* @brief Function implementing the myTask02 thread.
+* @brief Function implementing the myTask01 thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartTask02 */
-void StartTask02(void *argument)
+/* USER CODE END Header_StartTask01 */
+void StartTask01(void *argument)
 {
-  /* USER CODE BEGIN StartTask02 */
+  /* USER CODE BEGIN StartTask01 */
 	float rnd, mean, square;
 	srand((unsigned)osKernelSysTick());
 	data.status1 = 0;
-
   /* Infinite loop */
   for(;;)
   {
 	  if(!data.status1) {
+
+		HAL_GPIO_TogglePin(Task1_GPIO_Port, Task1_Pin);
 
 		#ifdef SEMAPHORE
 		osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
@@ -244,6 +247,64 @@ void StartTask02(void *argument)
 		#else
 		osMutexRelease(myMutex01Handle);
 		#endif
+
+		HAL_GPIO_TogglePin(Task1_GPIO_Port, Task1_Pin);
+
+	}
+    osDelay(1);
+  }
+  /* USER CODE END StartTask01 */
+}
+
+/* USER CODE BEGIN Header_StartTask02 */
+/**
+* @brief Function implementing the myTask02 thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTask02 */
+void StartTask02(void *argument)
+{
+  /* USER CODE BEGIN StartTask02 */
+	float rnd, mean, square;
+	srand((unsigned)osKernelSysTick());
+	data.status2 = 0;
+
+  /* Infinite loop */
+  for(;;)
+  {
+	  if(!data.status2) {
+
+		HAL_GPIO_TogglePin(Task2_GPIO_Port, Task2_Pin);
+
+		#ifdef SEMAPHORE
+		osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
+		#else
+		osMutexAcquire(myMutex01Handle, osWaitForever);
+		#endif
+
+		mean = 0;
+		square = 0;
+
+		for(uint16_t i = 0; i < 1000; i++) {
+		 // cast random value to float, divide by RAND_MAX to get 0-1 range, *2 to get 0-2 range and -1 to get -1 to 1 range
+		  rnd = (float)rand() / RAND_MAX * 2.0f - 1.0f;
+		  mean += rnd;
+		  square += rnd * rnd;
+		}
+
+		data.data2[0] = mean/1000;
+		data.data2[1] = sqrt(square/1000);
+		data.status2  =	1;
+
+		#ifdef SEMAPHORE
+		osSemaphoreRelease(myBinarySem01Handle);
+		#else
+		osMutexRelease(myMutex01Handle);
+		#endif
+
+		HAL_GPIO_TogglePin(Task2_GPIO_Port, Task2_Pin);
+
 	}
     osDelay(1);
   }
@@ -262,12 +323,15 @@ void StartTask03(void *argument)
   /* USER CODE BEGIN StartTask03 */
 	float rnd, mean, square;
 	srand((unsigned)osKernelSysTick());
-	data.status2 = 0;
+	data.status3 = 0;
 
   /* Infinite loop */
   for(;;)
   {
-	  if(!data.status2) {
+	  if(!data.status3) {
+
+		HAL_GPIO_TogglePin(Task3_GPIO_Port, Task3_Pin);
+
 
 		#ifdef SEMAPHORE
 		osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
@@ -279,75 +343,29 @@ void StartTask03(void *argument)
 		square = 0;
 
 		for(uint16_t i = 0; i < 1000; i++){
+
 			// cast random value to float, divide by RAND_MAX to get 0-1 range, *2 to get 0-2 range and -1 to get -1 to 1 range
 			rnd = (float)rand() / RAND_MAX * 2.0f - 1.0f;
 			mean += rnd;
 			square += rnd * rnd;
 		}
 
-		data.data2[0] = mean/1000;
-		data.data2[1] = sqrt(square/1000);
-		data.status2  = 1;
+		data.data3[0] = mean/1000;
+		data.data3[1] = sqrt(square/1000);
+		data.status3  = 1;
 
 		#ifdef SEMAPHORE
 		osSemaphoreRelease(myBinarySem01Handle);
 		#else
 		osMutexRelease(myMutex01Handle);
 		#endif
+
+		HAL_GPIO_TogglePin(Task3_GPIO_Port, Task3_Pin);
+
 	  }
 	  osDelay(1);
   }
   /* USER CODE END StartTask03 */
-}
-
-/* USER CODE BEGIN Header_StartTask04 */
-/**
-* @brief Function implementing the myTask04 thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTask04 */
-void StartTask04(void *argument)
-{
-  /* USER CODE BEGIN StartTask04 */
-	float rnd, mean, square;
-	srand((unsigned)osKernelSysTick());
-	data.status3 = 0;
-
-  /* Infinite loop */
-  for(;;)
-  {
-	  if(!data.status2) {
-
-		#ifdef SEMAPHORE
-		  osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
-		#else
-		  osMutexAcquire(myMutex01Handle, osWaitForever);
-		#endif
-
-		  mean = 0;
-		  square = 0;
-
-		  for(uint16_t i = 0; i < 1000; i++){
-			  // cast random value to float, divide by RAND_MAX to get 0-1 range, *2 to get 0-2 range and -1 to get -1 to 1 range
-			  rnd = (float)rand() / RAND_MAX * 2.0f - 1.0f;
-			  mean += rnd;
-			  square += rnd * rnd;
-		  }
-
-		  data.data3[0] = mean/1000;
-		  data.data3[1] = sqrt(square/1000);
-		  data.status3  = 1;
-
-		#ifdef SEMAPHORE
-		osSemaphoreRelease(myBinarySem01Handle);
-		#else
-		osMutexRelease(myMutex01Handle);
-		#endif
-	  }
-    osDelay(1);
-  }
-  /* USER CODE END StartTask04 */
 }
 
 /* USER CODE BEGIN Header_StartPrintTask */
@@ -367,33 +385,38 @@ void StartPrintTask(void *argument)
 	{
 		if (data.status1 && data.status2 && data.status3){
 
-		#ifdef SEMAPHORE
-		osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
-		#else
-		osMutexAcquire(myMutex01Handle, osWaitForever);
-		#endif
+			HAL_GPIO_TogglePin(PrintTask_GPIO_Port, PrintTask_Pin);
 
-		  //means of means
-		  means[0] = (data.data1[0] + data.data2[0] + data.data3[0]) / 3;
-		  means[1] = (data.data1[1] + data.data2[2] + data.data3[3]) / 3;
+			#ifdef SEMAPHORE
+			osSemaphoreAcquire(myBinarySem01Handle, osWaitForever);
+			#else
+			osMutexAcquire(myMutex01Handle, osWaitForever);
+			#endif
 
-		  sprintf(buf, "Mean of means = %f | Mean of square means = %f", means[0], means[1]);
-		  HAL_UART_Transmit(&huart2, buf, strlen((const char*)buf), HAL_MAX_DELAY);
-		  HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), HAL_MAX_DELAY);
+			//means of means
+			means[0] = (data.data1[0] + data.data2[0] + data.data3[0]) / 3;
+			means[1] = (data.data1[1] + data.data2[1] + data.data3[1]) / 3;
 
-		  data.status1 = 0;
-		  data.status2 = 0;
-		  data.status3 = 0;
-		  // delay 10 * 60 chars
-		  osDelay(600);
+			sprintf((char*)buf, "Mean of means = %f | Mean of square means = %f", means[0], means[1]);
+			HAL_UART_Transmit(&huart2, buf, strlen((const char*)buf), HAL_MAX_DELAY);
+			HAL_UART_Transmit(&huart2, (uint8_t*)"\n", sizeof("\n"), HAL_MAX_DELAY);
 
+			// delay 10 * 60 chars
+			osDelay(600);
 
-		#ifdef SEMAPHORE
-		  osSemaphoreRelease(myBinarySem01Handle);
-		#else
-		  osMutexRelease(myMutex01Handle);
-		#endif
+			data.status1 = 0;
+			data.status2 = 0;
+			data.status3 = 0;
+
+			#ifdef SEMAPHORE
+			osSemaphoreRelease(myBinarySem01Handle);
+			#else
+			osMutexRelease(myMutex01Handle);
+			#endif
+
+			HAL_GPIO_TogglePin(PrintTask_GPIO_Port, PrintTask_Pin);
 		}
+
 		//1s - 600ms from previous delay
 		osDelay(400);
 	}
